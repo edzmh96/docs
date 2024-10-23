@@ -1,94 +1,75 @@
 {
-  "openapi": "3.0.1",
+  "openapi": "3.0.0",
   "info": {
-    "title": "OpenAPI Plant Store",
-    "description": "A sample API that uses a plant store as an example to demonstrate features in the OpenAPI specification",
-    "license": {
-      "name": "MIT"
-    },
-    "version": "1.0.0"
+    "title": "Video API",
+    "version": "1.0.0",
+    "description": "API for managing videos, including uploading, retrieving, and deleting video metadata."
   },
-  "servers": [
-    {
-      "url": "http://sandbox.mintlify.com"
-    }
-  ],
-  "security": [
-    {
-      "bearerAuth": []
-    }
-  ],
   "paths": {
-    "/plants": {
-      "get": {
-        "description": "Returns all plants from the system that the user has access to",
-        "parameters": [
-          {
-            "name": "limit",
-            "in": "query",
-            "description": "The maximum number of results to return",
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Plant response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Plant"
+    "/v1/video": {
+      "post": {
+        "summary": "Upload a video",
+        "description": "Uploads a video file or video URL, generating associated metadata.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "oneOf": [
+                  {
+                    "properties": {
+                      "video_file": {
+                        "type": "string",
+                        "format": "binary",
+                        "description": "Video file to upload. Max size 2GB."
+                      }
+                    },
+                    "required": ["video_file"]
+                  },
+                  {
+                    "properties": {
+                      "video_url": {
+                        "type": "string",
+                        "description": "Publicly accessible URL for the video."
+                      }
+                    },
+                    "required": ["video_url"]
+                  }
+                ],
+                "properties": {
+                  "external_id": {
+                    "type": "string",
+                    "description": "Any external string associated with the video."
+                  },
+                  "title": {
+                    "type": "string",
+                    "description": "Title of the video. Will generate one if not provided."
+                  },
+                  "description": {
+                    "type": "string",
+                    "description": "Description of the video. Will generate one if not provided."
+                  },
+                  "metadata": {
+                    "type": "object",
+                    "description": "JSON object containing additional metadata for the video."
+                  },
+                  "collection_id": {
+                    "type": "string",
+                    "description": "ID of the collection or namespace to associate the video with."
                   }
                 }
               }
             }
-          },
-          "400": {
-            "description": "Unexpected error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
           }
-        }
-      },
-      "post": {
-        "description": "Creates a new plant in the store",
-        "requestBody": {
-          "description": "Plant to add to the store",
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/NewPlant"
-              }
-            }
-          },
-          "required": true
         },
         "responses": {
           "200": {
-            "description": "plant response",
+            "description": "Video uploaded successfully",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Plant"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "unexpected error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
+                  "$ref": "#/components/schemas/VideoObject"
                 }
               }
             }
@@ -96,32 +77,154 @@
         }
       }
     },
-    "/plants/{id}": {
-      "delete": {
-        "description": "Deletes a single plant based on the ID supplied",
+    "/v1/video/{video_id}": {
+      "get": {
+        "summary": "Get video metadata",
+        "description": "Retrieves metadata of a video based on the video ID.",
         "parameters": [
           {
-            "name": "id",
+            "name": "video_id",
             "in": "path",
-            "description": "ID of plant to delete",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
+              "type": "string"
+            },
+            "description": "ID of the video to retrieve."
           }
         ],
         "responses": {
-          "204": {
-            "description": "Plant deleted",
-            "content": {}
-          },
-          "400": {
-            "description": "unexpected error",
+          "200": {
+            "description": "Video metadata retrieved successfully",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Error"
+                  "$ref": "#/components/schemas/VideoObject"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Video not found"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete a video",
+        "description": "Deletes a video based on the video ID.",
+        "parameters": [
+          {
+            "name": "video_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "ID of the video to delete."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Video deleted successfully"
+          },
+          "404": {
+            "description": "Video not found"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
+    "/v1/video/search": {
+      "post": {
+        "summary": "Search for videos or clips",
+        "description": "Search for videos or clips based on a query, filters, and optional image input.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "query": {
+                    "type": "string",
+                    "description": "English language query"
+                  },
+                  "image_url": {
+                    "type": "string",
+                    "description": "URL of an image to include in the search (optional)"
+                  },
+                  "image_base64": {
+                    "type": "string",
+                    "description": "Base64-encoded image string (optional)"
+                  },
+                  "filters": {
+                    "type": "object",
+                    "properties": {
+                      "search_type": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "enum": ["speech", "visual", "ocr"]
+                        },
+                        "description": "Type of search: speech, visual, or OCR"
+                      },
+                      "score": {
+                        "type": "integer",
+                        "description": "Minimum score for search results"
+                      }
+                    }
+                  },
+                  "video_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "List of video IDs to filter the search"
+                  },
+                  "mode": {
+                    "type": "string",
+                    "enum": ["clips", "videos"],
+                    "description": "Returns either a list of clips or a list of video results with clip matches grouped under them."
+                  },
+                  "limit": {
+                    "type": "integer",
+                    "description": "Limits the number of clip matches.",
+                    "default": 50
+                  }
+                },
+                "required": ["query"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Search results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "oneOf": [
+                          {
+                            "$ref": "#/components/schemas/VideoResult"
+                          },
+                          {
+                            "$ref": "#/components/schemas/ClipResult"
+                          }
+                        ]
+                      },
+                      "description": "List of results, either VideoResult or ClipResult"
+                    },
+                    "cursor": {
+                      "type": "string",
+                      "description": "Cursor for pagination"
+                    }
+                  }
                 }
               }
             }
@@ -132,63 +235,121 @@
   },
   "components": {
     "schemas": {
-      "Plant": {
-        "required": [
-          "name"
-        ],
+      "VideoObject": {
         "type": "object",
         "properties": {
-          "name": {
-            "description": "The name of the plant",
-            "type": "string"
+          "id": {
+            "type": "string",
+            "description": "Unique identifier for the video."
           },
-          "tag": {
-            "description": "Tag to specify the type",
-            "type": "string"
-          }
-        }
-      },
-      "NewPlant": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/Plant"
+          "title": {
+            "type": "string",
+            "description": "Title of the video, generated automatically if not provided."
           },
-          {
-            "required": [
-              "id"
-            ],
+          "description": {
+            "type": "string",
+            "description": "Description of the video, generated automatically if not provided."
+          },
+          "external_id": {
+            "type": "string",
+            "description": "External identifier for the video."
+          },
+          "indexing_status": {
             "type": "object",
             "properties": {
-              "id": {
-                "description": "Identification number of the plant",
-                "type": "integer",
-                "format": "int64"
+              "upload": {
+                "type": "string",
+                "enum": [
+                  "NOT_STARTED",
+                  "QUEUED",
+                  "PROCESSING",
+                  "READY",
+                  "ERROR"
+                ]
+              },
+              "audio": {
+                "type": "string",
+                "enum": [
+                  "NOT_STARTED",
+                  "QUEUED",
+                  "PROCESSING",
+                  "READY",
+                  "ERROR"
+                ]
+              },
+              "visual": {
+                "type": "string",
+                "enum": [
+                  "NOT_STARTED",
+                  "QUEUED",
+                  "PROCESSING",
+                  "READY",
+                  "ERROR"
+                ]
               }
-            }
-          }
-        ]
-      },
-      "Error": {
-        "required": [
-          "error",
-          "message"
-        ],
-        "type": "object",
-        "properties": {
-          "error": {
-            "type": "integer",
-            "format": "int32"
+            },
+            "description": "Indexing status of various components of the video."
           },
-          "message": {
-            "type": "string"
+          "video_metadata": {
+            "type": "object",
+            "description": "FFmpeg or EXIF metadata associated with the video."
           }
         }
-      }
-    },
-    "securitySchemes": {
-      "bearerAuth": {
-        "type": "http",
-        "scheme": "bearer"
+      },
+      "VideoResult": {
+        "type": "object",
+        "properties": {
+          "video_id": {
+            "type": "string",
+            "description": "Unique identifier for the video"
+          },
+          "external_id": {
+            "type": "string",
+            "description": "External identifier for the video"
+          },
+          "score": {
+            "type": "number",
+            "format": "float",
+            "description": "Relevance score of the video to the query"
+          },
+          "matches": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ClipResult"
+            },
+            "description": "List of clip results that match the query"
+          }
+        }
+      },
+      "ClipResult": {
+        "type": "object",
+        "properties": {
+          "match_type": {
+            "type": "string",
+            "description": "Type of match (e.g., text, visual)"
+          },
+          "score": {
+            "type": "number",
+            "format": "float",
+            "description": "Relevance score of the clip to the query"
+          },
+          "start_ms": {
+            "type": "integer",
+            "description": "Start time of the clip in milliseconds"
+          },
+          "end_ms": {
+            "type": "integer",
+            "description": "End time of the clip in milliseconds"
+          },
+          "thumbnail_url": {
+            "type": "string",
+            "description": "URL of the thumbnail for the clip"
+          },
+          "context": {
+            "type": "string",
+            "description": "Context for text matches (semantic or keyword), only exists for text matches"
+          }
+        }
       }
     }
   }
